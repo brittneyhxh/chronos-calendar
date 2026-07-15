@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chronos Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#161A2C;
+    --night:#1C2340;
+    --night-2:#262E52;
+    --parchment:#F6F1E4;
+    --parchment-2:#EDE6D2;
+    --jade:#4C7C6C;
+    --jade-dark:#2E4E44;
+    --brass:#C7A05C;
+    --brass-dark:#8C6B2E;
+    --rose:#B0523C;
+    --line: rgba(22,26,44,0.12);
+    --line-soft: rgba(246,241,228,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--night);
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(199,160,92,0.10), transparent 40%),
+      radial-gradient(circle at 88% 82%, rgba(76,124,108,0.14), transparent 45%);
+    color: var(--parchment);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    padding: 48px 20px 80px;
+  }
+  .wrap{ max-width: 760px; margin: 0 auto; }
+
+  .masthead{ text-align:center; margin-bottom: 40px; }
+  .masthead .eyebrow{
+    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--brass); margin-bottom: 10px; font-weight: 500;
+  }
+  .masthead h1{
+    font-family: 'Noto Serif SC', serif; font-weight: 700;
+    font-size: 34px; margin: 0 0 10px; color: var(--parchment);
+    letter-spacing: 0.01em;
+  }
+  .masthead p{
+    font-size: 15px; color: rgba(246,241,228,0.62); margin:0;
+    max-width: 480px; margin: 0 auto; line-height: 1.6;
+  }
+
+  .card{
+    background: var(--parchment);
+    border-radius: 20px;
+    color: var(--ink);
+    overflow: hidden;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.35);
+  }
+
+  .tabs{
+    display:flex;
+    background: var(--parchment-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .tab{
+    flex:1; padding: 18px 12px; text-align:center;
+    font-size: 14px; font-weight: 500; cursor:pointer;
+    color: rgba(22,26,44,0.55);
+    border-bottom: 2px solid transparent;
+    transition: color .15s ease, border-color .15s ease;
+    user-select:none;
+  }
+  .tab.active{ color: var(--jade-dark); border-bottom-color: var(--jade); }
+  .tab:hover:not(.active){ color: var(--ink); }
+
+  .panel{ padding: 36px 40px 40px; }
+  .panel[hidden]{ display:none; }
+
+  .field-row{ display:flex; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .field{ flex:1; min-width: 120px; }
+  .field label{
+    display:block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: rgba(22,26,44,0.5); margin-bottom: 6px; font-weight: 600;
+  }
+  input[type=date], select{
+    width: 100%; padding: 11px 12px; font-size: 15px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: #fff; color: var(--ink); font-family: inherit;
+  }
+  select:focus, input:focus{ outline: 2px solid var(--jade); outline-offset: 1px; }
+
+  .leap-check{
+    display:flex; align-items:center; gap:8px; margin-top: 4px;
+    font-size: 13px; color: rgba(22,26,44,0.65);
+  }
+  .leap-check input{ width:16px; height:16px; accent-color: var(--rose); }
+  .leap-check.disabled{ opacity: 0.35; pointer-events:none; }
+
+  .result{
+    margin-top: 30px;
+    border-top: 1px dashed var(--line);
+    padding-top: 28px;
+    display:flex; gap: 28px; align-items:center;
+  }
+  .moon{ flex: 0 0 auto; }
+  .moon svg{ display:block; }
+
+  .result-text{ flex:1; min-width:0; }
+  .result-text .headline{
+    font-family:'Noto Serif SC', serif; font-weight: 700; font-size: 26px;
+    color: var(--ink); margin: 0 0 4px; line-height:1.3;
+  }
+  .result-text .subline{
+    font-size: 14px; color: rgba(22,26,44,0.6); margin: 0 0 14px;
+  }
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{
+    font-size: 12px; padding: 5px 11px; border-radius: 999px;
+    background: var(--jade); color: #F2F7F4; font-weight: 500;
+  }
+  .chip.brass{ background: var(--brass); color: #3A2A0E; }
+  .chip.rose{ background: var(--rose); color: #FBEAE3; }
+
+  .error{ font-size: 13px; color: var(--rose); margin-top: 6px; min-height: 18px; }
+
+  .footnote{
+    text-align:center; font-size: 12px; color: rgba(246,241,228,0.4);
+    margin-top: 26px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="eyebrow">變遷</div>
+    <h1>Chronos Calendar</h1>
+    <p>Convert between the Gregorian calendar and the lunar calendar</p>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" data-tab="g2l">Gregorian → Lunar</div>
+      <div class="tab" data-tab="l2g">Lunar → Gregorian</div>
+    </div>
+
+    <div class="panel" id="panel-g2l">
+      <div class="field-row">
+        <div class="field">
+          <label for="g-date">Gregorian date</label>
+          <input type="date" id="g-date">
+        </div>
+      </div>
+      <div class="error" id="g2l-error"></div>
+
+      <div class="result" id="g2l-result" hidden>
+        <div class="moon" id="g2l-moon"></div>
+        <div class="result-text">
+          <p class="headline" id="g2l-headline"></p>
+          <p class="subline" id="g2l-subline"></p>
+          <div class="chips" id="g2l-chips"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-l2g" hidden>
+      <div class="field-row">
+        <div class="field">
+          <label for="l-year">Lunar year</label>
+          <select id="l-year"></select>
+        </div>
+        <div class="field">
+          <label for="l-month">Lunar month</label>
+          <select id="l-month"></select>
+        </div>
+        <div class="field">
+          <label for="l-day">Lunar day</label>
+          <select id="l-day"></select>
+        </div>
+      </div>
+      <div class="error" id="l2g-error"></div>
+
+      <div class="result" id="l2g-result" hidden>
+        <div class="moon" id="l2g-moon"></div>
+        <div class="result-text">
+          <p class="headline" id="l2g-headline"></p>
+          <p class="subline" id="l2g-subline"></p>
+          <div class="chips" id="l2g-chips"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote">Covers 1900–2100. Lunar day 1 is the new moon; day 15–16 is typically the full moon.</p>
+</div>
+
+<script>
+const lunarInfo = [
+0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+0x06566,0x0d4a0,0x0ea50,0x16a95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0,
+0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,
+0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x05ac0,0x0ab60,0x096d5,0x092e0,
+0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
+0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
+0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
+0x05aa0,0x076a3,0x096d0,0x04afb,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
+0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,
+0x14b63,0x09370,0x049f8,0x04970,0x064b0,0x168a6,0x0ea50,0x06b20,0x1a6c4,0x0aae0,
+0x092e0,0x0d2e3,0x0c960,0x0d557,0x0d4a0,0x0da50,0x05d55,0x056a0,0x0a6d0,0x055d4,
+0x052d0,0x0a9b8,0x0a950,0x0b4a0,0x0b6a6,0x0ad50,0x055a0,0x0aba4,0x0a5b0,0x052b0,
+0x0b273,0x06930,0x07337,0x06aa0,0x0ad50,0x14b55,0x04b60,0x0a570,0x054e4,0x0d160,
+0x0e968,0x0d520,0x0daa0,0x16aa6,0x056d0,0x04ae0,0x0a9d4,0x0a2d0,0x0d150,0x0f252,
+0x0d520
+];
+const baseDate = Date.UTC(1900, 0, 31);
+
+function lunarYearDays(y){
+  let sum = 348;
+  const info = lunarInfo[y - 1900];
+  for (let i = 0x8000; i > 0x8; i >>= 1) sum += (info & i) ? 1 : 0;
+  return sum + leapDays(y);
+}
+function leapMonth(y){ return lunarInfo[y - 1900] & 0xf; }
+function leapDays(y){
+  if (leapMonth(y)) return (lunarInfo[y - 1900] & 0x10000) ? 30 : 29;
+  return 0;
+}
+function monthDays(y, m){ return (lunarInfo[y - 1900] & (0x10000 >> m)) ? 30 : 29; }
+
+function solar2lunar(y, m, d){
+  const target = Date.UTC(y, m - 1, d);
+  let offset = Math.round((target - baseDate) / 86400000);
+  let lunarYear = 1900, daysOfYear = 0;
+  for (; lunarYear <= 2100 && offset > 0; lunarYear++){
+    daysOfYear = lunarYearDays(lunarYear);
+    offset -= daysOfYear;
+  }
+  if (offset < 0){ offset += daysOfYear; lunarYear--; }
+
+  const leap = leapMonth(lunarYear);
+  let isLeap = false, lunarMonth = 1, daysOfMonth = 0;
+  for (; lunarMonth <= 13 && offset > 0; lunarMonth++){
+    if (leap > 0 && lunarMonth === (leap + 1) && !isLeap){
+      lunarMonth--; isLeap = true;
+      daysOfMonth = leapDays(lunarYear);
+    } else {
+      daysOfMonth = monthDays(lunarYear, lunarMonth);
+    }
+    offset -= daysOfMonth;
+    if (isLeap && lunarMonth === (leap + 1)) isLeap = false;
+  }
+  if (offset === 0 && leap > 0 && lunarMonth === leap + 1){
+    if (isLeap) isLeap = false; else { isLeap = true; lunarMonth--; }
+  }
+  if (offset < 0){ offset += daysOfMonth; lunarMonth--; }
+  return { lunarYear, lunarMonth, lunarDay: offset + 1, isLeap };
+}
+
+function lunar2solar(lunarYear, lunarMonth, lunarDay, isLeap){
+  const leap = leapMonth(lunarYear);
+  let offset = 0;
+  for (let y = 1900; y < lunarYear; y++) offset += lunarYearDays(y);
+  for (let m = 1; m < lunarMonth; m++){
+    offset += monthDays(lunarYear, m);
+    if (leap === m) offset += leapDays(lunarYear);
+  }
+  if (isLeap) offset += monthDays(lunarYear, lunarMonth);
+  offset += (lunarDay - 1);
+  const ms = baseDate + offset * 86400000;
+  const dt = new Date(ms);
+  return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() };
+}
+
+function moonPhaseSVG(day, monthLen){
+  const size = 92;
+  const cx = size/2, cy = size/2, r = size/2 - 6;
+  const frac = (day - 1) / (monthLen - 1);
+  const litFromRight = frac <= 0.5;
+  const k = Math.abs(frac - 0.5) * 2;
+  const rx = r * (1 - k);
+  const ellipsePath = litFromRight
+    ? `M ${cx} ${cy-r} A ${r} ${r} 0 0 1 ${cx} ${cy+r} A ${rx} ${r} 0 0 ${frac<0.25?0:1} ${cx} ${cy-r} Z`
+    : `M ${cx} ${cy-r} A ${r} ${r} 0 0 0 ${cx} ${cy+r} A ${rx} ${r} 0 0 ${frac>0.75?1:0} ${cx} ${cy-r} Z`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#1C2340" stroke="#C7A05C" stroke-width="1.5"/>
+    <path d="${ellipsePath}" fill="#F6F1E4"/>
+  </svg>`;
+}
+
+function renderResult(prefix, solar, lunar){
+  const gz = ganzhiYear(lunar.lunarYear);
+  const mLen = lunar.isLeap ? leapDays(lunar.lunarYear) : monthDays(lunar.lunarYear, lunar.lunarMonth);
+  document.getElementById(prefix + '-moon').innerHTML = moonPhaseSVG(lunar.lunarDay, mLen);
+
+  const leapPrefix = lunar.isLeap ? '闰' : '';
+  const solarStr = new Date(Date.UTC(solar.year, solar.month - 1, solar.day))
+    .toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric', timeZone:'UTC' });
+
+  document.getElementById(prefix + '-headline').textContent =
+    `${gz.ganzhi}年 ${leapPrefix}${monthName(lunar.lunarMonth)}${dayName(lunar.lunarDay)}`;
+  document.getElementById(prefix + '-subline').textContent = solarStr;
+
+  document.getElementById(prefix + '-chips').innerHTML = `
+    <span class="chip">Year of the ${gz.zodiac} (${gz.zodiacZh})</span>
+    <span class="chip brass">${gz.ganzhi} year</span>
+    ${lunar.isLeap ? '<span class="chip rose">Leap month</span>' : ''}
+  `;
+  document.getElementById(prefix + '-result').hidden = false;
+}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.tab;
+    document.getElementById('panel-g2l').hidden = target !== 'g2l';
+    document.getElementById('panel-l2g').hidden = target !== 'l2g';
+  });
+});
+
+// Gregorian -> Lunar
+const gDateInput = document.getElementById('g-date');
+function runG2L(){
+  const err = document.getElementById('g2l-error');
+  err.textContent = '';
+  const val = gDateInput.value;
+  if (!val) { document.getElementById('g2l-result').hidden = true; return; }
+  const [y, m, d] = val.split('-').map(Number);
+  if (y < 1900 || y > 2100) {
+    err.textContent = 'Please choose a date between 1900 and 2100.';
+    document.getElementById('g2l-result').hidden = true;
+    return;
+  }
+  const lunar = solar2lunar(y, m, d);
+  renderResult('g2l', { year: y, month: m, day: d }, lunar);
+}
+gDateInput.addEventListener('input', runG2L);
+
+// Lunar -> Gregorian
+const lYear = document.getElementById('l-year');
+const lMonth = document.getElementById('l-month');
+const lDay = document.getElementById('l-day');
+const lLeap = document.getElementById('l-leap');
+const leapWrap = document.getElementById('leap-wrap');
+
+for (let y = 1900; y <= 2100; y++){
+  const opt = document.createElement('option');
+  opt.value = y;
+  opt.textContent = `${y} (${ganzhiYear(y).ganzhi})`;
+  lYear.appendChild(opt);
+}
+lYear.value = 2026;
+
+function populateMonths(){
+  const y = Number(lYear.value);
+  const leap = leapMonth(y);
+  lMonth.innerHTML = '';
+  for (let m = 1; m <= 12; m++){
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = monthName(m);
+    lMonth.appendChild(opt);
+  }
+  if (leap > 0){
+    leapWrap.classList.remove('disabled');
+  } else {
+    leapWrap.classList.add('disabled');
+    lLeap.checked = false;
+  }
+}
+
+function populateDays(){
+  const y = Number(lYear.value);
+  const m = Number(lMonth.value);
+  const isLeap = lLeap.checked && leapMonth(y) === m;
+  const days = isLeap ? leapDays(y) : monthDays(y, m);
+  const prevVal = Number(lDay.value) || 1;
+  lDay.innerHTML = '';
+  for (let d = 1; d <= days; d++){
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = `${dayName(d)} (${d})`;
+    lDay.appendChild(opt);
+  }
+  lDay.value = Math.min(prevVal, days);
+}
+
+function runL2G(){
+  const err = document.getElementById('l2g-error');
+  err.textContent = '';
+  const y = Number(lYear.value);
+  const m = Number(lMonth.value);
+  const isLeap = lLeap.checked && leapMonth(y) === m;
+  const d = Number(lDay.value);
+  if (lLeap.checked && leapMonth(y) !== m){
+    err.textContent = `${y} has no leap ${monthName(m)}. Uncheck leap month, or pick month ${monthName(leapMonth(y) || 0)}.`;
+    document.getElementById('l2g-result').hidden = true;
+    return;
+  }
+  const solar = lunar2solar(y, m, d, isLeap);
+  renderResult('l2g', solar, { lunarYear: y, lunarMonth: m, lunarDay: d, isLeap });
+}
+
+lYear.addEventListener('change', () => { populateMonths(); populateDays(); runL2G(); });
+lMonth.addEventListener('change', () => { populateDays(); runL2G(); });
+lDay.addEventListener('change', runL2G);
+lLeap.addEventListener('change', () => { populateDays(); runL2G(); });
+
+populateMonths();
+populateDays();
+
+// Initialize with today's date
+const today = new Date();
+gDateInput.value = today.toISOString().slice(0,10);
+runG2L();
+runL2G();
+</script>
+</body>
+</html>
