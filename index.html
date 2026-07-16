@@ -119,6 +119,9 @@
   .result-text .subline{
     font-size: 14px; color: rgba(22,26,44,0.6); margin: 0 0 14px;
   }
+  .result-text .observance{
+    font-size: 18px; color: var(--rose); font-weight: 700; margin: 0;
+  }
 
   .error{ font-size: 13px; color: var(--rose); margin-top: 6px; min-height: 18px; }
 
@@ -159,6 +162,7 @@
           <p class="headline" id="g2l-headline"></p>
           <p class="subline" id="g2l-subline"></p>
           <p class="subline" id="g2l-zodiac"></p>
+          <p class="observance" id="g2l-observance" hidden></p>
         </div>
       </div>
     </div>
@@ -190,6 +194,7 @@
           <p class="headline" id="l2g-headline"></p>
           <p class="subline" id="l2g-subline"></p>
           <p class="subline" id="l2g-zodiac"></p>
+          <p class="observance" id="l2g-observance" hidden></p>
         </div>
       </div>
     </div>
@@ -285,11 +290,31 @@ function lunar2solar(lunarYear, lunarMonth, lunarDay, isLeap){
 function monthName(m){ return 'Month ' + m; }
 function dayName(d){ return 'Day ' + d; }
 
+// Chinese Zodiacs based on lunar year
 const ZODIAC = ['Rat','Ox','Tiger','Rabbit','Dragon','Snake','Horse','Goat','Monkey','Rooster','Dog','Pig'];
 function zodiacYear(y){
   const idx = ((y - 4) % 12 + 12) % 12;
   return ZODIAC[idx];
 }
+
+// Cultural observances tied to lunar calendar
+const OBSERVANCES = [
+  { month: 1, day: 1, isLeap: false, name: "Chinese New Year" },
+  { month: 1, day: 15, isLeap: false, name: "Lantern Festival" },
+  { month: 4, day: 15, isLeap: false, name: "Buddha's Birthday" },
+  { month: 5, day: 5, isLeap: false, name: "Dragon Boat Festival" },
+  { month: 6, day: 19, isLeap: false, name: "Quan Am Day"},
+  { month: 7, day: 7, isLeap: false, name: "Magpie (Qixi) Festival" },
+  { month: 7, day: 15, isLeap: false, name: "Ghost Festival / Wandering Souls Day / Vu Lan Festival" },
+  { month: 8, day: 15, isLeap: false, name: "Mid-Autumn Festival" },
+  { month: 9, day: 5, isLeap: false, name: "Earth God (Ong Dia) Festival" },
+  { month: 9, day: 19, isLeap: false, name: "Guan Yin Renunciation Day" }
+]
+
+function findObservance(month, day, isLeap){
+  return OBSERVANCES.find(o => o.month === month && o.day === day && o.isLeap === !!isLeap);
+}
+
 
 function moonPhaseSVG(day, monthLen){
   const size = 92;
@@ -318,6 +343,16 @@ function renderResult(prefix, solar, lunar){
     `Lunar ${lunar.lunarYear}, ${monthName(lunar.lunarMonth)}${leapLabel}, ${dayName(lunar.lunarDay)}`;
   document.getElementById(prefix + '-subline').textContent = solarStr;
   document.getElementById(prefix + '-zodiac').textContent = `Year of the ${zodiacYear(lunar.lunarYear)}`;
+
+  const observances = document.getElementById(prefix + '-observance');
+  const match = findObservance(lunar.lunarMonth, lunar.lunarDay, lunar.isLeap);
+  if (match){
+    observances.textContent = match.name;
+    observances.hidden = false;
+  } else {
+    observances.hidden = true;
+  }
+
   document.getElementById(prefix + '-result').hidden = false;
 }
 
