@@ -50,6 +50,11 @@
     max-width: 480px; margin: 0 auto; line-height: 1.6;
   }
 
+  .masthead .current-year{
+    font-size: 18px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--brass); font-weight: 500; margin-top: 14px;
+  }
+
   .card{
     background: var(--parchment);
     border-radius: 20px;
@@ -114,13 +119,6 @@
   .result-text .subline{
     font-size: 14px; color: rgba(22,26,44,0.6); margin: 0 0 14px;
   }
-  .chips{ display:flex; gap:8px; flex-wrap:wrap; }
-  .chip{
-    font-size: 12px; padding: 5px 11px; border-radius: 999px;
-    background: var(--jade); color: #F2F7F4; font-weight: 500;
-  }
-  .chip.brass{ background: var(--brass); color: #3A2A0E; }
-  .chip.rose{ background: var(--rose); color: #FBEAE3; }
 
   .error{ font-size: 13px; color: var(--rose); margin-top: 6px; min-height: 18px; }
 
@@ -136,7 +134,8 @@
   <div class="masthead">
     <div class="eyebrow">變遷</div>
     <h1>Chronos Calendar</h1>
-    <p>Convert between the Gregorian calendar and the lunar calendar</p>
+    <p>Convert between the Gregorian calendar and the lunar calendar. <br>View eastern religious observances.</p>
+    <p class="current-year" id="current-year-zodiac"></p>
   </div>
 
   <div class="card">
@@ -159,7 +158,7 @@
         <div class="result-text">
           <p class="headline" id="g2l-headline"></p>
           <p class="subline" id="g2l-subline"></p>
-          <div class="chips" id="g2l-chips"></div>
+          <p class="subline" id="g2l-zodiac"></p>
         </div>
       </div>
     </div>
@@ -179,6 +178,10 @@
           <select id="l-day"></select>
         </div>
       </div>
+      <div class="leap-check" id="leap-wrap">
+        <input type="checkbox" id="l-leap">
+        <label for="l-leap" style="margin:0;">This is the leap month</label>
+      </div>
       <div class="error" id="l2g-error"></div>
 
       <div class="result" id="l2g-result" hidden>
@@ -186,13 +189,13 @@
         <div class="result-text">
           <p class="headline" id="l2g-headline"></p>
           <p class="subline" id="l2g-subline"></p>
-          <div class="chips" id="l2g-chips"></div>
+          <p class="subline" id="l2g-zodiac"></p>
         </div>
       </div>
     </div>
   </div>
 
-  <p class="footnote">Covers 1900–2100. Lunar day 1 is the new moon; day 15–16 is typically the full moon.</p>
+  <p class="footnote">Covers years 1900–2100. Lunar day 1 is the new moon. Day 15 is the full moon.</p>
 </div>
 
 <script>
@@ -278,6 +281,16 @@ function lunar2solar(lunarYear, lunarMonth, lunarDay, isLeap){
   return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() };
 }
 
+
+function monthName(m){ return 'Month ' + m; }
+function dayName(d){ return 'Day ' + d; }
+
+const ZODIAC = ['Rat','Ox','Tiger','Rabbit','Dragon','Snake','Horse','Goat','Monkey','Rooster','Dog','Pig'];
+function zodiacYear(y){
+  const idx = ((y - 4) % 12 + 12) % 12;
+  return ZODIAC[idx];
+}
+
 function moonPhaseSVG(day, monthLen){
   const size = 92;
   const cx = size/2, cy = size/2, r = size/2 - 6;
@@ -295,23 +308,16 @@ function moonPhaseSVG(day, monthLen){
 }
 
 function renderResult(prefix, solar, lunar){
-  const gz = ganzhiYear(lunar.lunarYear);
+  const leapLabel = lunar.isLeap ? ' (leap)' : '';
   const mLen = lunar.isLeap ? leapDays(lunar.lunarYear) : monthDays(lunar.lunarYear, lunar.lunarMonth);
-  document.getElementById(prefix + '-moon').innerHTML = moonPhaseSVG(lunar.lunarDay, mLen);
-
-  const leapPrefix = lunar.isLeap ? '闰' : '';
   const solarStr = new Date(Date.UTC(solar.year, solar.month - 1, solar.day))
     .toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric', timeZone:'UTC' });
 
+  document.getElementById(prefix + '-moon').innerHTML = moonPhaseSVG(lunar.lunarDay, mLen);
   document.getElementById(prefix + '-headline').textContent =
-    `${gz.ganzhi}年 ${leapPrefix}${monthName(lunar.lunarMonth)}${dayName(lunar.lunarDay)}`;
+    `Lunar ${lunar.lunarYear}, ${monthName(lunar.lunarMonth)}${leapLabel}, ${dayName(lunar.lunarDay)}`;
   document.getElementById(prefix + '-subline').textContent = solarStr;
-
-  document.getElementById(prefix + '-chips').innerHTML = `
-    <span class="chip">Year of the ${gz.zodiac} (${gz.zodiacZh})</span>
-    <span class="chip brass">${gz.ganzhi} year</span>
-    ${lunar.isLeap ? '<span class="chip rose">Leap month</span>' : ''}
-  `;
+  document.getElementById(prefix + '-zodiac').textContent = `Year of the ${zodiacYear(lunar.lunarYear)}`;
   document.getElementById(prefix + '-result').hidden = false;
 }
 
@@ -354,7 +360,7 @@ const leapWrap = document.getElementById('leap-wrap');
 for (let y = 1900; y <= 2100; y++){
   const opt = document.createElement('option');
   opt.value = y;
-  opt.textContent = `${y} (${ganzhiYear(y).ganzhi})`;
+  opt.textContent = y;
   lYear.appendChild(opt);
 }
 lYear.value = 2026;
@@ -387,7 +393,7 @@ function populateDays(){
   for (let d = 1; d <= days; d++){
     const opt = document.createElement('option');
     opt.value = d;
-    opt.textContent = `${dayName(d)} (${d})`;
+    opt.textContent = d;
     lDay.appendChild(opt);
   }
   lDay.value = Math.min(prevVal, days);
@@ -422,6 +428,10 @@ const today = new Date();
 gDateInput.value = today.toISOString().slice(0,10);
 runG2L();
 runL2G();
+
+const todayLunar = solar2lunar(today.getFullYear(), today.getMonth() + 1, today.getDate());
+document.getElementById('current-year-zodiac').textContent =
+  `${today.getFullYear()} · Year of the ${zodiacYear(todayLunar.lunarYear)}`;
 </script>
 </body>
 </html>
